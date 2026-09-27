@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Thai", "Leelawadee UI", "Tahoma", sans-serif;
+
+  --color-roast: #3b2418;
+  --color-bean: #7a4a2e;
+  --color-crema: #c98a45;
+  --color-leaf: #5e7a5a;
+  --color-paper: #f2f3ef;
+  --color-rule: #d9d6cf;
+}
+
+body {
+  @apply bg-paper text-roast font-sans antialiased;
+}
