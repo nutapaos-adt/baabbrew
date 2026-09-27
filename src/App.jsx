@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Papa from 'papaparse'
 import {
   ResponsiveContainer,
@@ -13,14 +13,55 @@ import {
   LabelList,
 } from 'recharts'
 import {
+  prepareRows,
+  getFilterOptions,
+  defaultFilters,
+  DATE_PRESETS,
+  presetRange,
+  activePreset,
+  countActiveFilters,
   buildDashboard,
   formatBaht,
   formatCount,
   formatThaiDate,
   formatThaiDateShort,
-} from './lib/metrics'
+} from './lib/dashboardMetrics'
+// ฟังก์ชันของอาจารย์สำหรับ Lab 2.2 (rows มี revenue, date, hour)
+import { prepareRows as prepareLabRows } from './lib/metrics.js'
+import Lab2Page from './lab2/Lab2Page.jsx'
 
 const CSV_URL = `${import.meta.env.BASE_URL}sales.csv`
+
+const PRODUCTS_URL = `${import.meta.env.BASE_URL}products.csv`
+
+const parseCsv = (text) =>
+  Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: (h) => h.trim() }).data
+
+// โหลด sales.csv (จำเป็น) และ products.csv (ไม่บังคับ ใช้แสดงชื่อเมนูใน Lab 2.2)
+async function loadSales() {
+  const res = await fetch(CSV_URL)
+  const text = await res.text()
+  // ถ้าไม่มีไฟล์ Vite จะส่งหน้า index.html กลับมาแทน จึงต้องเช็กตรงนี้
+  if (!res.ok || text.trimStart().startsWith('<')) {
+    throw new Error('ไม่พบไฟล์ public/sales.csv ตรวจชื่อไฟล์และตำแหน่งอีกครั้ง')
+  }
+  const raw = parseCsv(text)
+
+  let products = []
+  try {
+    const pRes = await fetch(PRODUCTS_URL)
+    const pText = await pRes.text()
+    if (pRes.ok && !pText.trimStart().startsWith('<')) products = parseCsv(pText)
+  } catch {
+    // ไม่มี products.csv ก็ยังใช้งานได้ กราฟจะแสดงรหัสสินค้าแทนชื่อ
+  }
+
+  return {
+    rows: prepareRows(raw), // สำหรับ Dashboard
+    labRows: prepareLabRows(raw), // สำหรับ Lab 2.2 ตามรูปแบบของอาจารย์
+    products,
+  }
+}
 
 // ใช้ปรับขนาดกราฟตามความกว้างจอ (Recharts ใช้คลาส Tailwind ตรง ๆ ไม่ได้)
 function useIsSmallScreen(query = '(max-width: 639px)') {
@@ -36,21 +77,182 @@ function useIsSmallScreen(query = '(max-width: 639px)') {
   return matches
 }
 
-// โหลดและแปลงไฟล์ CSV จากโฟลเดอร์ public
-async function loadSales() {
-  const res = await fetch(CSV_URL)
-  const text = await res.text()
-  // ถ้าไม่มีไฟล์ Vite จะส่งหน้า index.html กลับมาแทน จึงต้องเช็กตรงนี้
-  if (!res.ok || text.trimStart().startsWith('<')) {
-    throw new Error('ไม่พบไฟล์ public/sales.csv ตรวจชื่อไฟล์และตำแหน่งอีกครั้ง')
-  }
-  const parsed = Papa.parse(text, {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (h) => h.trim(),
-  })
-  return buildDashboard(parsed.data)
+// ---------- ตัวกรอง ----------
+
+function FieldLabel({ children }) {
+  return <p className="mb-1.5 text-xs font-medium text-bean">{children}</p>
 }
+
+function Chip({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+        active
+          ? 'border-roast bg-roast text-white'
+          : 'border-rule bg-white text-roast hover:border-bean'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Select({ value, onChange, options, allLabel }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-md border border-rule bg-white px-3 py-1.5 text-sm focus:border-bean focus:outline-none"
+    >
+      <option value="all">{allLabel}</option>
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+const dateInputClass =
+  'min-w-0 flex-1 rounded-md border border-rule bg-white px-2 py-1.5 text-sm focus:border-bean focus:outline-none'
+
+function FilterBar({ filters, setFilters, options }) {
+  const [open, setOpen] = useState(false)
+  const active = countActiveFilters(filters, options)
+  const preset = activePreset(filters, options)
+  const update = (patch) => setFilters((f) => ({ ...f, ...patch }))
+
+  // เลือก/ยกเลิกสาขาทีละสาขา ถ้ายกเลิกจนไม่เหลือ = กลับไปทุกสาขา
+  const toggleBranch = (b) =>
+    setFilters((f) => ({
+      ...f,
+      branches: f.branches.includes(b)
+        ? f.branches.filter((x) => x !== b)
+        : [...f.branches, b],
+    }))
+
+  // กันไม่ให้วันเริ่มอยู่หลังวันสิ้นสุด
+  const setFrom = (from) =>
+    from && update({ from, to: from > filters.to ? from : filters.to })
+  const setTo = (to) =>
+    to && update({ to, from: to < filters.from ? to : filters.from })
+
+  return (
+    <section className="mb-4 rounded-lg border border-rule bg-white p-4 sm:mb-6 sm:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 text-base font-semibold sm:pointer-events-none"
+          aria-expanded={open}
+        >
+          ตัวกรอง
+          {active > 0 && (
+            <span className="rounded-full bg-crema px-2 text-xs font-medium text-white">
+              {active}
+            </span>
+          )}
+          <span className="text-sm text-bean sm:hidden">{open ? '▲' : '▼'}</span>
+        </button>
+        {active > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilters(defaultFilters(options))}
+            className="text-sm text-bean underline-offset-2 hover:underline"
+          >
+            ล้างตัวกรอง
+          </button>
+        )}
+      </div>
+
+      <div className={`${open ? 'grid' : 'hidden'} mt-4 gap-5 sm:grid lg:grid-cols-12`}>
+        <div className="lg:col-span-5">
+          <FieldLabel>ช่วงวันที่</FieldLabel>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {DATE_PRESETS.map((p) => (
+              <Chip
+                key={p.id}
+                active={preset === p.id}
+                onClick={() => update(presetRange(p.id, options))}
+              >
+                {p.label}
+              </Chip>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              aria-label="วันที่เริ่ม"
+              value={filters.from}
+              min={options.minDate}
+              max={options.maxDate}
+              onChange={(e) => setFrom(e.target.value)}
+              className={dateInputClass}
+            />
+            <span className="text-sm text-roast/60">ถึง</span>
+            <input
+              type="date"
+              aria-label="วันที่สิ้นสุด"
+              value={filters.to}
+              min={options.minDate}
+              max={options.maxDate}
+              onChange={(e) => setTo(e.target.value)}
+              className={dateInputClass}
+            />
+          </div>
+        </div>
+
+        <div className="lg:col-span-4">
+          <FieldLabel>สาขา</FieldLabel>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={filters.branches.length === 0}
+              onClick={() => update({ branches: [] })}
+            >
+              ทุกสาขา
+            </Chip>
+            {options.branches.map((b) => (
+              <Chip
+                key={b}
+                active={filters.branches.includes(b)}
+                onClick={() => toggleBranch(b)}
+              >
+                {b}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:col-span-3 lg:grid-cols-1">
+          <div>
+            <FieldLabel>ช่องทางขาย</FieldLabel>
+            <Select
+              value={filters.channel}
+              onChange={(channel) => update({ channel })}
+              options={options.channels}
+              allLabel="ทุกช่องทาง"
+            />
+          </div>
+          <div>
+            <FieldLabel>วิธีชำระเงิน</FieldLabel>
+            <Select
+              value={filters.payment}
+              onChange={(payment) => update({ payment })}
+              options={options.payments}
+              allLabel="ทุกวิธี"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ---------- KPI และกราฟ ----------
 
 function Kpi({ label, value, note }) {
   return (
@@ -59,7 +261,11 @@ function Kpi({ label, value, note }) {
       <p className="mt-1 truncate text-xl font-semibold tabular-nums tracking-tight sm:text-3xl">
         {value}
       </p>
-      {note && <p className="mt-1 text-[11px] leading-snug text-roast/60 sm:text-xs">{note}</p>}
+      {note && (
+        <p className="mt-1 text-[11px] leading-snug text-roast/60 sm:text-xs">
+          {note}
+        </p>
+      )}
     </div>
   )
 }
@@ -78,9 +284,19 @@ function Panel({ title, aside, children, className = '' }) {
   )
 }
 
+function EmptyChart({ height }) {
+  return (
+    <div
+      className="grid place-items-center rounded-md bg-paper text-sm text-roast/60"
+      style={{ height }}
+    >
+      ไม่มีข้อมูลตามตัวกรองที่เลือก
+    </div>
+  )
+}
+
 const axisTick = { fill: '#3b2418', fillOpacity: 0.65, fontSize: 12 }
 const tooltipStyle = { borderRadius: 6, borderColor: '#d9d6cf' }
-
 const SERIES_NAMES = { sales: 'ยอดขายรายวัน', ma7: 'เฉลี่ย 7 วัน' }
 
 // คำอธิบายเส้นแบบง่าย ใช้แทน Legend ของ Recharts เพื่อจัดวางให้เข้ากับหัวกราฟ
@@ -100,8 +316,10 @@ function DailyLegend() {
 }
 
 function DailyChart({ data, small }) {
+  const height = small ? 240 : 300
+  if (data.length === 0) return <EmptyChart height={height} />
   return (
-    <ResponsiveContainer width="100%" height={small ? 240 : 300}>
+    <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="#d9d6cf" strokeDasharray="3 3" vertical={false} />
         <XAxis
@@ -134,7 +352,7 @@ function DailyChart({ data, small }) {
           stroke="#7a4a2e"
           strokeOpacity={0.25}
           strokeWidth={1}
-          dot={false}
+          dot={data.length <= 31 ? { r: 2, fill: '#7a4a2e', fillOpacity: 0.3, stroke: 'none' } : false}
           activeDot={{ r: 3, fill: '#7a4a2e', fillOpacity: 0.5, stroke: 'none' }}
           isAnimationActive={false}
         />
@@ -156,6 +374,7 @@ function DailyChart({ data, small }) {
 function BranchChart({ data, small }) {
   // ความสูงเพิ่มตามจำนวนสาขา แท่งจะได้ไม่เบียดกัน
   const height = Math.max(200, data.length * 48)
+  if (data.length === 0) return <EmptyChart height={200} />
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart
@@ -201,51 +420,39 @@ function CenteredMessage({ title, detail }) {
   )
 }
 
-export default function App() {
-  const [state, setState] = useState({ status: 'loading' })
+// ---------- หน้าหลัก ----------
+
+function Dashboard({ rows }) {
   const small = useIsSmallScreen()
-
-  useEffect(() => {
-    loadSales()
-      .then((data) => setState({ status: 'ready', data }))
-      .catch((err) => setState({ status: 'error', message: err.message }))
-  }, [])
-
-  if (state.status === 'loading') {
-    return <CenteredMessage title="กำลังโหลดข้อมูลยอดขาย…" />
-  }
-  if (state.status === 'error') {
-    return <CenteredMessage title="โหลดข้อมูลไม่สำเร็จ" detail={state.message} />
-  }
-
-  const { kpis, daily, branches, range, rowCount } = state.data
-
-  if (rowCount === 0) {
-    return (
-      <CenteredMessage
-        title="ไฟล์ sales.csv ยังไม่มีข้อมูลที่ใช้ได้"
-        detail="ตรวจว่าแถวแรกเป็นชื่อคอลัมน์ และแต่ละแถวมี order_id กับ datetime"
-      />
-    )
-  }
+  const options = useMemo(() => getFilterOptions(rows), [rows])
+  const [filters, setFilters] = useState(() => defaultFilters(options))
+  // คำนวณใหม่เฉพาะเมื่อตัวกรองเปลี่ยน
+  const { kpis, daily, branches, rowCount } = useMemo(
+    () => buildDashboard(rows, filters),
+    [rows, filters]
+  )
 
   return (
     <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:py-12">
-      <header className="mb-6 flex sm:mb-8 flex-wrap items-end justify-between gap-2">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-2 sm:mb-8">
         <div>
           <h1 className="text-3xl font-bold sm:text-4xl">บ้านบรู</h1>
           <p className="mt-1 text-bean">สรุปยอดขาย</p>
         </div>
-        {range && (
-          <p className="text-sm text-roast/70">
-            {formatThaiDate(range.from, true)} ถึง {formatThaiDate(range.to, true)}
-            , {formatCount(branches.length)} สาขา
-          </p>
-        )}
+        <p className="text-sm text-roast/70">
+          {formatThaiDate(filters.from, true)} ถึง {formatThaiDate(filters.to, true)}
+          , {formatCount(filters.branches.length || options.branches.length)} สาขา
+        </p>
       </header>
 
+      <FilterBar filters={filters} setFilters={setFilters} options={options} />
+
       {/* gap-px + พื้นสีเส้น ทำให้เกิดเส้นคั่นระหว่าง KPI ทุกขนาดจอ */}
-      <section className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:mb-6 lg:grid-cols-4">
+      <section
+        className={`mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:mb-6 lg:grid-cols-4 ${
+          rowCount === 0 ? 'opacity-60' : ''
+        }`}
+      >
         <Kpi label="ยอดขายรวม" value={formatBaht(kpis.totalSales)} />
         <Kpi label="จำนวนบิล" value={formatCount(kpis.orders)} />
         <Kpi label="ยอดเฉลี่ยต่อบิล" value={formatBaht(kpis.avgOrderValue, 2)} />
@@ -258,12 +465,82 @@ export default function App() {
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         <Panel title="ยอดขายรายวัน" aside={<DailyLegend />} className="lg:col-span-2">
-          <DailyChart data={daily} small={small} />
+          <DailyChart data={rowCount === 0 ? [] : daily} small={small} />
         </Panel>
         <Panel title="ยอดขายแยกสาขา">
           <BranchChart data={branches} small={small} />
         </Panel>
       </div>
     </main>
+  )
+}
+
+// เลือกหน้าจาก hash ใน URL: #lab2 = Lab 2.2, อื่น ๆ = Dashboard
+function useHashPage() {
+  const read = () => (window.location.hash === '#lab2' ? 'lab2' : 'dashboard')
+  const [page, setPage] = useState(read)
+  useEffect(() => {
+    const onHash = () => setPage(read())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  return page
+}
+
+function NavTabs({ page }) {
+  const tab = (id, href, label) => (
+    <a
+      href={href}
+      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+        page === id ? 'bg-roast text-white' : 'text-roast hover:bg-white'
+      }`}
+    >
+      {label}
+    </a>
+  )
+  return (
+    <nav className="mx-auto flex max-w-6xl gap-2 px-3 pt-4 sm:px-6">
+      {tab('dashboard', '#', 'Dashboard')}
+      {tab('lab2', '#lab2', 'Lab 2.2')}
+    </nav>
+  )
+}
+
+export default function App() {
+  const [state, setState] = useState({ status: 'loading' })
+  const page = useHashPage()
+
+  useEffect(() => {
+    loadSales()
+      .then((data) => setState({ status: 'ready', ...data }))
+      .catch((err) => setState({ status: 'error', message: err.message }))
+  }, [])
+
+  if (state.status === 'loading') {
+    return <CenteredMessage title="กำลังโหลดข้อมูลยอดขาย…" />
+  }
+  if (state.status === 'error') {
+    return <CenteredMessage title="โหลดข้อมูลไม่สำเร็จ" detail={state.message} />
+  }
+  if (state.rows.length === 0) {
+    return (
+      <CenteredMessage
+        title="ไฟล์ sales.csv ยังไม่มีข้อมูลที่ใช้ได้"
+        detail="ตรวจว่าแถวแรกเป็นชื่อคอลัมน์ และแต่ละแถวมี order_id กับ datetime"
+      />
+    )
+  }
+
+  return (
+    <>
+      <NavTabs page={page} />
+      {page === 'lab2' ? (
+        <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8">
+          <Lab2Page rows={state.labRows} products={state.products} />
+        </main>
+      ) : (
+        <Dashboard rows={state.rows} />
+      )}
+    </>
   )
 }
