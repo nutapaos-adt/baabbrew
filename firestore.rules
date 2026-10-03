@@ -1,12 +1,89 @@
 rules_version = '2';
 
-// Lab 3.3 · เขียน Security Rules ด้วย Prompt 3.3B ใน PROMPTS_LAB3.md
-// ตอนนี้ปิดทุกอย่างไว้ (ปลอดภัย แต่เว็บใช้งานไม่ได้)
-// เป้าหมาย: แท็บ "ทดสอบ Rules" ได้ ✅ ทุกข้อ และฟอร์มบันทึกยอดขายยังใช้งานได้
+// Lab 3.3 · Security Rules ของ Dashboard บ้านบรู (Prompt 3.3B)
+// หลักคิด: เว็บเป็นของสาธารณะ ใครก็เปิดดู web config ได้ ความปลอดภัยจริงจึงต้องอยู่ที่นี่
+// อะไรที่ไม่ได้อนุญาตไว้ชัดเจน = ถูกปฏิเสธทั้งหมด
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // ---------- ฟังก์ชันช่วย ----------
+
+    // ล็อกอินแล้วหรือยัง (request.auth จะเป็น null ถ้ายังไม่ล็อกอิน)
+    function signedIn() {
+      return request.auth != null;
     }
+
+    // ฟิลด์ที่เอกสารยอดขายจากเว็บต้องมี "ครบ" และ "มีได้แค่นี้" (ตรงกับ buildSale() + created_at)
+    function saleFields() {
+      return ['order_id', 'datetime', 'date', 'hour', 'branch', 'product_id',
+              'qty', 'unit_price', 'revenue', 'customer_id', 'payment_method',
+              'channel', 'source', 'created_by', 'created_at'];
+    }
+
+    // ตรวจเอกสารยอดขายใหม่ทีละเงื่อนไข (d = ข้อมูลที่กำลังจะเขียน)
+    function validSale(d) {
+      // ฟิลด์ครบทุกตัว และไม่มีฟิลด์แปลกปลอม เช่น แอบเพิ่ม discount
+      return d.keys().hasAll(saleFields())
+        && d.keys().hasOnly(saleFields())
+
+        // บันทึกจากหน้าเว็บเท่านั้น และต้องเป็นชื่อของคนที่ล็อกอินอยู่จริง (ปลอมเป็นคนอื่นไม่ได้)
+        && d.source == 'web'
+        && d.created_by == request.auth.uid
+
+        // เวลาบันทึกต้องเป็นเวลาของเซิร์ฟเวอร์ (serverTimestamp) ใส่เวลาเองไม่ได้
+        && d.created_at == request.time
+
+        // สาขาต้องเป็น 1 ใน 5 สาขา และวิธีชำระเงินต้องเป็น 1 ใน 5 แบบ
+        && d.branch in ['สยาม', 'สีลม', 'อารีย์', 'บางนา', 'มหาวิทยาลัย']
+        && d.payment_method in ['QR พร้อมเพย์', 'บัตรเครดิต', 'เงินสด', 'LINE MAN', 'Grab']
+
+        // จำนวนเป็นจำนวนเต็ม 1–20 และชั่วโมงเป็นจำนวนเต็ม 0–23
+        && d.qty is int && d.qty >= 1 && d.qty <= 20
+        && d.hour is int && d.hour >= 0 && d.hour <= 23
+
+        // เมนูต้องมีอยู่จริง และราคาต้องตรงกับราคาในเมนู (แก้ราคาเองจากหน้าเว็บไม่ได้)
+        && d.product_id is string
+        && exists(/databases/$(database)/documents/products/$(d.product_id))
+        && d.unit_price == get(/databases/$(database)/documents/products/$(d.product_id)).data.price
+
+        // ยอดรวมต้องเท่ากับ จำนวน × ราคา
+        && d.revenue == d.qty * d.unit_price
+
+        // รูปแบบวันที่และเวลาไทย
+        && d.order_id is string && d.order_id.size() > 0
+        && d.date is string && d.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.datetime is string
+        && d.datetime.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+]07:00$')
+
+        // ไม่มีรหัสสมาชิก = null หรือถ้ามีต้องเป็น C ตามด้วยเลข 5 หลัก
+        && (d.customer_id == null
+            || (d.customer_id is string && d.customer_id.matches('^C[0-9]{5}$')))
+
+        // ช่องทางขายต้องเป็นค่าที่ buildSale() สร้างได้
+        && d.channel in ['หน้าร้าน', 'เดลิเวอรี'];
+    }
+
+    // ---------- เมนูและสาขา: อ่านได้เมื่อล็อกอิน เขียนจากเว็บไม่ได้ ----------
+    // (เพิ่ม/แก้เมนูทำผ่าน scripts/seed.mjs ที่ใช้ service account ซึ่งข้าม rules)
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /branches/{branchId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // ---------- ยอดขาย ----------
+    match /sales/{saleId} {
+      // อ่านได้เมื่อล็อกอิน (Dashboard สด)
+      allow read: if signedIn();
+      // สร้างได้เมื่อล็อกอิน และเอกสารต้องผ่านการตรวจทุกข้อ
+      allow create: if signedIn() && validSale(request.resource.data);
+      // ยอดขายที่บันทึกแล้วแก้ไขหรือลบไม่ได้ ถ้าบันทึกผิดให้ลงรายการปรับปรุงใหม่แทน
+      allow update, delete: if false;
+    }
+
+    // collection อื่นทั้งหมดไม่ได้กล่าวถึงข้างบน = ปฏิเสธโดยอัตโนมัติ
   }
 }
