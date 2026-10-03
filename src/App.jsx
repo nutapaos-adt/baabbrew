@@ -300,8 +300,8 @@ function EmptyChart({ height }) {
   )
 }
 
-const axisTick = { fill: '#3b2418', fillOpacity: 0.65, fontSize: 12 }
-const tooltipStyle = { borderRadius: 6, borderColor: '#d9d6cf' }
+const axisTick = { fill: '#2a1b14', fillOpacity: 0.65, fontSize: 12 }
+const tooltipStyle = { borderRadius: 6, borderColor: '#e4d6c2' }
 const SERIES_NAMES = { sales: 'ยอดขายรายวัน', ma7: 'เฉลี่ย 7 วัน' }
 
 // คำอธิบายเส้นแบบง่าย ใช้แทน Legend ของ Recharts เพื่อจัดวางให้เข้ากับหัวกราฟ
@@ -326,13 +326,13 @@ function DailyChart({ data, small }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid stroke="#d9d6cf" strokeDasharray="3 3" vertical={false} />
+        <CartesianGrid stroke="#e4d6c2" strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="date"
           tickFormatter={formatThaiDateShort}
           tick={axisTick}
           tickLine={false}
-          axisLine={{ stroke: '#d9d6cf' }}
+          axisLine={{ stroke: '#e4d6c2' }}
           minTickGap={small ? 24 : 40}
         />
         <YAxis
@@ -354,21 +354,21 @@ function DailyChart({ data, small }) {
         <Line
           type="linear"
           dataKey="sales"
-          stroke="#7a4a2e"
+          stroke="#6b3f26"
           strokeOpacity={0.25}
           strokeWidth={1}
-          dot={data.length <= 31 ? { r: 2, fill: '#7a4a2e', fillOpacity: 0.3, stroke: 'none' } : false}
-          activeDot={{ r: 3, fill: '#7a4a2e', fillOpacity: 0.5, stroke: 'none' }}
+          dot={data.length <= 31 ? { r: 2, fill: '#6b3f26', fillOpacity: 0.3, stroke: 'none' } : false}
+          activeDot={{ r: 3, fill: '#6b3f26', fillOpacity: 0.5, stroke: 'none' }}
           isAnimationActive={false}
         />
         {/* เส้นเฉลี่ย 7 วัน: หนาและเข้ม เป็นเส้นหลักที่ใช้อ่านแนวโน้ม */}
         <Line
           type="monotone"
           dataKey="ma7"
-          stroke="#7a4a2e"
+          stroke="#6b3f26"
           strokeWidth={2.5}
           dot={false}
-          activeDot={{ r: 4, fill: '#c98a45', stroke: '#7a4a2e' }}
+          activeDot={{ r: 4, fill: '#c8873a', stroke: '#6b3f26' }}
           isAnimationActive={false}
         />
       </LineChart>
@@ -398,15 +398,15 @@ function BranchChart({ data, small }) {
         />
         <Tooltip
           formatter={(v) => [formatBaht(v), 'ยอดขาย']}
-          cursor={{ fill: '#f2f3ef' }}
+          cursor={{ fill: '#f4eadc' }}
           contentStyle={tooltipStyle}
         />
-        <Bar dataKey="sales" fill="#c98a45" radius={[0, 4, 4, 0]} barSize={22}>
+        <Bar dataKey="sales" fill="#c8873a" radius={[0, 4, 4, 0]} barSize={22}>
           <LabelList
             dataKey="sales"
             position="right"
             formatter={(v) => formatBaht(v)}
-            style={{ fill: '#3b2418', fontSize: 12 }}
+            style={{ fill: '#2a1b14', fontSize: 12 }}
           />
         </Bar>
       </BarChart>
@@ -441,8 +441,8 @@ function Dashboard({ rows }) {
     <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:py-12">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-2 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold sm:text-4xl">บ้านบรู</h1>
-          <p className="mt-1 text-bean">สรุปยอดขาย</p>
+          <h1 className="text-3xl sm:text-4xl">สรุปยอดขาย</h1>
+          <p className="mt-1 text-bean">ทุกสาขาของบ้านบรู จากข้อมูลที่ทำความสะอาดแล้ว</p>
         </div>
         <p className="text-sm text-roast/70">
           {formatThaiDate(filters.from, true)} ถึง {formatThaiDate(filters.to, true)}
@@ -500,21 +500,45 @@ function useHashPage() {
   return page
 }
 
+/** โลโก้เมล็ดกาแฟ */
+function BeanMark() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true" className="h-8 w-8 shrink-0">
+      <circle cx="16" cy="16" r="16" fill="#c8873a" />
+      <ellipse cx="16" cy="16" rx="7.2" ry="10" transform="rotate(28 16 16)" fill="#2a1b14" />
+      <path d="M12.6 8.6c3.2 2.4 3.6 5 2.2 7.6s-1.2 5.2 2.4 7.4" fill="none" stroke="#c8873a"
+            strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** แถบเมนูด้านบน สีเอสเปรสโซ เหมือนป้ายเมนูหน้าร้าน */
 function NavTabs({ page }) {
   return (
-    <nav className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-3 pt-4 sm:px-6">
-      {PAGES.map((p) => (
-        <a
-          key={p.id}
-          href={p.id === 'dashboard' ? '#' : '#' + p.id}
-          className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-            page === p.id ? 'bg-roast text-white' : 'text-roast hover:bg-white'
-          }`}
-        >
-          {p.label}
+    <div className="sticky top-0 z-20 bg-espresso text-foam shadow-[0_1px_0_rgba(0,0,0,0.25)]">
+      <nav className="mx-auto flex max-w-6xl items-center gap-4 px-3 py-2.5 sm:px-6">
+        <a href="#" className="flex shrink-0 items-center gap-2.5 rounded-full pr-2">
+          <BeanMark />
+          <span className="font-display text-xl leading-none">บ้านบรู</span>
         </a>
-      ))}
-    </nav>
+        <div className="-mr-3 flex min-w-0 gap-1 overflow-x-auto pr-3 sm:mr-0 sm:pr-0">
+          {PAGES.map((p) => (
+            <a
+              key={p.id}
+              href={p.id === 'dashboard' ? '#' : '#' + p.id}
+              aria-current={page === p.id ? 'page' : undefined}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                page === p.id
+                  ? 'bg-crema text-espresso'
+                  : 'text-foam/75 hover:bg-white/10 hover:text-foam'
+              }`}
+            >
+              {p.label}
+            </a>
+          ))}
+        </div>
+      </nav>
+    </div>
   )
 }
 

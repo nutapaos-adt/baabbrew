@@ -11,9 +11,9 @@ import {
 } from "./lab2Metrics.js";
 import { dailyRevenue, withMovingAverage, fmtBaht, fmtNum } from "../lib/metrics.js";
 
-const MAIN = "#0F8B8D";
-const GRID = "#e7e5e4";
-const tick = { fill: "#57534e", fontSize: 12 };
+const MAIN = "#6b3f26";
+const GRID = "#e4d6c2";
+const tick = { fill: "#6f533c", fontSize: 12 };
 const tooltipStyle = { borderRadius: 8, borderColor: GRID, fontSize: 13 };
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
@@ -51,11 +51,11 @@ export function FixedChart1({ rows, products }) {
         <XAxis type="number" hide domain={[0, "dataMax"]} />
         <YAxis type="category" dataKey="name" width={136} tick={tick} tickLine={false}
                axisLine={false} interval={0} tickFormatter={(s) => shortName(s)} />
-        <Tooltip cursor={{ fill: "#f5f5f4" }} contentStyle={tooltipStyle}
+        <Tooltip cursor={{ fill: "#f4eadc" }} contentStyle={tooltipStyle}
                  formatter={(v, _k, item) => [`${fmtBaht(v)} (${pct(item.payload.share)})`, "ยอดขาย"]} />
         <Bar dataKey="revenue" fill={MAIN} radius={[0, 3, 3, 0]} isAnimationActive={false}>
           <LabelList dataKey="revenue" position="right" formatter={fmtBaht}
-                     style={{ fill: "#44403c", fontSize: 11 }} />
+                     style={{ fill: "#3e2d21", fontSize: 11 }} />
         </Bar>
       </BarChart>
     </ChartFrame>
@@ -83,11 +83,11 @@ export function FixedChart2({ rows }) {
         {/* แกนตัวเลขเริ่มที่ 0 เสมอ ความยาวแท่งจึงเป็นสัดส่วนกับยอดจริง */}
         <XAxis type="number" hide domain={[0, "dataMax"]} />
         <YAxis type="category" dataKey="branch" width={96} tick={tick} tickLine={false} axisLine={false} />
-        <Tooltip cursor={{ fill: "#f5f5f4" }} contentStyle={tooltipStyle}
+        <Tooltip cursor={{ fill: "#f4eadc" }} contentStyle={tooltipStyle}
                  formatter={(v) => [fmtBaht(v), "ยอดขาย"]} />
         <Bar dataKey="revenue" fill={MAIN} radius={[0, 3, 3, 0]} barSize={28} isAnimationActive={false}>
           <LabelList dataKey="revenue" position="right" formatter={fmtBaht}
-                     style={{ fill: "#44403c", fontSize: 12 }} />
+                     style={{ fill: "#3e2d21", fontSize: 12 }} />
         </Bar>
       </BarChart>
     </ChartFrame>
@@ -184,7 +184,7 @@ export function FixedChart4({ rows }) {
         <XAxis dataKey="month" tickFormatter={thaiMonth} tick={{ ...tick, fontSize: 11 }}
                tickLine={false} axisLine={{ stroke: GRID }} minTickGap={8} />
         <YAxis tickFormatter={fmtBaht} tick={tick} tickLine={false} axisLine={false} width={68} />
-        <Tooltip cursor={{ fill: "#f5f5f4" }} contentStyle={tooltipStyle} labelFormatter={thaiMonth}
+        <Tooltip cursor={{ fill: "#f4eadc" }} contentStyle={tooltipStyle} labelFormatter={thaiMonth}
                  formatter={(v, _k, item) => [
                    `${fmtBaht(v)}/วัน (ยอดรวม ${fmtBaht(item.payload.revenue)}, ${item.payload.days}/${item.payload.totalDays} วัน)`,
                    "เฉลี่ยต่อวัน",
@@ -196,7 +196,7 @@ export function FixedChart4({ rows }) {
                      content={({ x, y, width, index }) => {
                        const d = data[index];
                        return d?.partial ? (
-                         <text x={x + width / 2} y={y - 6} textAnchor="middle" fill="#57534e" fontSize={11}>
+                         <text x={x + width / 2} y={y - 6} textAnchor="middle" fill="#6f533c" fontSize={11}>
                            {d.days}/{d.totalDays} วัน
                          </text>
                        ) : null;
@@ -242,13 +242,13 @@ export function FixedChart5({ rows }) {
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 96, left: 0, bottom: 0 }}>
         <XAxis type="number" hide domain={[0, "dataMax"]} />
         <YAxis type="category" dataKey="label" width={172} tick={tick} tickLine={false} axisLine={false} />
-        <Tooltip cursor={{ fill: "#f5f5f4" }} contentStyle={tooltipStyle}
+        <Tooltip cursor={{ fill: "#f4eadc" }} contentStyle={tooltipStyle}
                  formatter={(v, _k, item) => [
                    `${fmtBaht(v)}/วัน (ยอดรวม ${fmtBaht(item.payload.revenue)})`, "ยอดเฉลี่ยต่อวัน",
                  ]} />
         <Bar dataKey="perDay" fill={MAIN} radius={[0, 3, 3, 0]} barSize={26} isAnimationActive={false}>
           <LabelList dataKey="perDay" position="right" formatter={(v) => `${fmtBaht(v)}/วัน`}
-                     style={{ fill: "#44403c", fontSize: 12 }} />
+                     style={{ fill: "#3e2d21", fontSize: 12 }} />
         </Bar>
       </BarChart>
     </ChartFrame>

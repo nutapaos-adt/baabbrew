@@ -17,9 +17,9 @@ import {
 import KpiCard from "../components/KpiCard.jsx";
 import SaleForm from "./SaleForm.jsx";
 
-const MAIN = "#7a4a2e";
-const GRID = "#e7e5e4";
-const tick = { fill: "#57534e", fontSize: 12 };
+const MAIN = "#6b3f26";
+const GRID = "#e4d6c2";
+const tick = { fill: "#6f533c", fontSize: 12 };
 const HIGHLIGHT_MS = 4000;
 const RECENT_COUNT = 8;
 
@@ -229,9 +229,9 @@ function BranchBars({ rows }) {
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 84, left: 0, bottom: 0 }}>
         <XAxis type="number" hide domain={[0, "dataMax"]} />
         <YAxis type="category" dataKey="branch" width={90} tick={tick} tickLine={false} axisLine={false} />
-        <Tooltip formatter={(v) => [fmtBaht(v), "ยอดขาย"]} cursor={{ fill: "#f5f5f4" }} />
+        <Tooltip formatter={(v) => [fmtBaht(v), "ยอดขาย"]} cursor={{ fill: "#f4eadc" }} />
         <Bar dataKey="revenue" fill={MAIN} radius={[0, 3, 3, 0]} barSize={22} isAnimationActive={false}>
-          <LabelList dataKey="revenue" position="right" formatter={fmtBaht} style={{ fill: "#44403c", fontSize: 12 }} />
+          <LabelList dataKey="revenue" position="right" formatter={fmtBaht} style={{ fill: "#3e2d21", fontSize: 12 }} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -305,8 +305,8 @@ function LiveDashboard({ user }) {
           <h1 className="flex items-center gap-2 text-2xl font-bold sm:text-3xl">
             ยอดขายสด
             <span className="relative flex h-2.5 w-2.5" title="อัปเดตอัตโนมัติ">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-leaf opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-leaf" />
             </span>
           </h1>
           <p className="text-sm text-stone-500">

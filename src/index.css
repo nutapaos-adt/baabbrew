@@ -1,17 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* บ้านบรู · ธีมร้านกาแฟ
+   ถุงกระดาษคราฟต์ (พื้นหลัง) · เอสเปรสโซ (ตัวอักษร/แถบเมนู) · คั่วกลาง (ข้อมูลหลัก)
+   คาราเมล (ไฮไลต์) · มัทฉะ (สถานะสด) */
 @theme {
   --font-sans: "IBM Plex Sans Thai", "Leelawadee UI", "Tahoma", sans-serif;
+  --font-display: "Mitr", "IBM Plex Sans Thai", "Leelawadee UI", sans-serif;
 
-  --color-roast: #3b2418;
-  --color-bean: #7a4a2e;
-  --color-crema: #c98a45;
-  --color-leaf: #5e7a5a;
-  --color-paper: #f2f3ef;
-  --color-rule: #d9d6cf;
+  --color-espresso: #2a1b14;
+  --color-roast: #2a1b14;
+  --color-bean: #6b3f26;
+  --color-crema: #c8873a;
+  --color-foam: #fffcf7;
+  --color-leaf: #6e8b5b;
+  --color-paper: #ece2d2;
+  --color-rule: #e4d6c2;
+
+  /* ปรับโทน stone ทั้งระบบเป็นน้ำตาลกาแฟ หน้าของอาจารย์ (Lab 2.2, ทดสอบ Rules)
+     จะได้กลมกลืนโดยไม่ต้องแก้ไฟล์ของอาจารย์ */
+  --color-stone-50: #fbf6ef;
+  --color-stone-100: #f4eadc;
+  --color-stone-200: #e7d7c2;
+  --color-stone-300: #d5be9f;
+  --color-stone-400: #b39575;
+  --color-stone-500: #8e6f52;
+  --color-stone-600: #6f533c;
+  --color-stone-700: #57402f;
+  --color-stone-800: #3e2d21;
+  --color-stone-900: #2a1b14;
+  --color-stone-950: #1a120d;
+
+  /* การ์ดเป็นสีฟองนมแทนขาวล้วน */
+  --color-white: #fffcf7;
 }
 
 body {
   @apply bg-paper text-roast font-sans antialiased;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-crema);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
