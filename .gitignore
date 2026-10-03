@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase (Lab 3) — ห้ามขึ้น GitHub
+.env
+.env.local
+secrets/
+import-summary.json
+.firebase/
+*-firebase-adminsdk-*.json

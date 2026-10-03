@@ -29,6 +29,11 @@ import {
 // ฟังก์ชันของอาจารย์สำหรับ Lab 2.2 (rows มี revenue, date, hour)
 import { prepareRows as prepareLabRows } from './lib/metrics.js'
 import Lab2Page from './lab2/Lab2Page.jsx'
+// Lab 3: Firestore แบบ real-time และทดสอบ Security Rules
+import LiveTab from './lab3/LiveTab.jsx'
+import RulesTester from './lab3/RulesTester.jsx'
+import SetupGuide from './lab3/SetupGuide.jsx'
+import { isConfigured } from './lab3/firebase.js'
 
 const CSV_URL = `${import.meta.env.BASE_URL}sales.csv`
 
@@ -475,9 +480,17 @@ function Dashboard({ rows }) {
   )
 }
 
-// เลือกหน้าจาก hash ใน URL: #lab2 = Lab 2.2, อื่น ๆ = Dashboard
+// แท็บทั้งหมด เลือกจาก hash ใน URL เช่น #lab2, #live
+const PAGES = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'lab2', label: 'Lab 2.2' },
+  { id: 'live', label: 'สด · Firestore' },
+  { id: 'rules', label: 'ทดสอบ Rules' },
+]
+
 function useHashPage() {
-  const read = () => (window.location.hash === '#lab2' ? 'lab2' : 'dashboard')
+  const read = () =>
+    PAGES.find((p) => '#' + p.id === window.location.hash)?.id ?? 'dashboard'
   const [page, setPage] = useState(read)
   useEffect(() => {
     const onHash = () => setPage(read())
@@ -488,20 +501,19 @@ function useHashPage() {
 }
 
 function NavTabs({ page }) {
-  const tab = (id, href, label) => (
-    <a
-      href={href}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-        page === id ? 'bg-roast text-white' : 'text-roast hover:bg-white'
-      }`}
-    >
-      {label}
-    </a>
-  )
   return (
-    <nav className="mx-auto flex max-w-6xl gap-2 px-3 pt-4 sm:px-6">
-      {tab('dashboard', '#', 'Dashboard')}
-      {tab('lab2', '#lab2', 'Lab 2.2')}
+    <nav className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-3 pt-4 sm:px-6">
+      {PAGES.map((p) => (
+        <a
+          key={p.id}
+          href={p.id === 'dashboard' ? '#' : '#' + p.id}
+          className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            page === p.id ? 'bg-roast text-white' : 'text-roast hover:bg-white'
+          }`}
+        >
+          {p.label}
+        </a>
+      ))}
     </nav>
   )
 }
@@ -534,12 +546,14 @@ export default function App() {
   return (
     <>
       <NavTabs page={page} />
-      {page === 'lab2' ? (
+      {page === 'dashboard' && <Dashboard rows={state.rows} />}
+      {page !== 'dashboard' && (
         <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8">
-          <Lab2Page rows={state.labRows} products={state.products} />
+          {page === 'lab2' && <Lab2Page rows={state.labRows} products={state.products} />}
+          {/* ยังไม่ได้ตั้งค่า .env จะแสดงวิธีเชื่อม Firebase แทน */}
+          {page === 'live' && (isConfigured ? <LiveTab /> : <SetupGuide />)}
+          {page === 'rules' && (isConfigured ? <RulesTester /> : <SetupGuide />)}
         </main>
-      ) : (
-        <Dashboard rows={state.rows} />
       )}
     </>
   )

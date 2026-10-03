@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Lab 3.3 · เขียน Security Rules ด้วย Prompt 3.3B ใน PROMPTS_LAB3.md
+// ตอนนี้ปิดทุกอย่างไว้ (ปลอดภัย แต่เว็บใช้งานไม่ได้)
+// เป้าหมาย: แท็บ "ทดสอบ Rules" ได้ ✅ ทุกข้อ และฟอร์มบันทึกยอดขายยังใช้งานได้
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
