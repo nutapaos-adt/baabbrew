@@ -8,8 +8,9 @@ export default function SetupGuide() {
         <li>หยุด <code className="rounded bg-stone-100 px-1">npm run dev</code> ด้วย Ctrl+C แล้วรันใหม่ (Vite อ่าน .env ตอนเริ่มเท่านั้น)</li>
       </ol>
       <p className="mt-5 text-sm text-stone-500">
-        สร้าง Firebase project ไม่ได้ (เช่น บัญชีองค์กรถูกจำกัด)? แจ้งผู้สอนเพื่อรับ checkpoint ที่มีโหมดสาธิต
-        ซึ่งใช้ทำ Lab 3.2 ได้โดยไม่ต้องมี Firebase
+        สร้าง Firebase project ไม่ได้ (เช่น บัญชีองค์กรถูกจำกัด)? เปิด{" "}
+        <a className="text-emerald-700 underline" href="?demo#live">โหมดสาธิต</a>{" "}
+        เพื่อทำ Lab 3.2 ต่อได้ ข้อมูลอยู่ในหน่วยความจำเท่านั้น รีเฟรชแล้วหาย
       </p>
     </div>
   );

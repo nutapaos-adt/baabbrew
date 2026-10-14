@@ -34,10 +34,18 @@ import LiveTab from './lab3/LiveTab.jsx'
 import RulesTester from './lab3/RulesTester.jsx'
 import SetupGuide from './lab3/SetupGuide.jsx'
 import { isConfigured } from './lab3/firebase.js'
+// Lab 4: วิเคราะห์ลูกค้า เมนู พยากรณ์ และวันผิดปกติ (อ่านผลสรุปจาก collection analytics)
+import CustomersTab from './lab4/CustomersTab.jsx'
+import ForecastTab from './lab4/ForecastTab.jsx'
+import { firestoreSource, createDemoSource } from './lab3/dataSource.js'
+
+// เปิด http://localhost:5173/?demo เพื่อลองแท็บ Lab 4 โดยคำนวณในเบราว์เซอร์ ไม่ใช้โควตา Firebase
+const DEMO = new URLSearchParams(window.location.search).has('demo')
 
 const CSV_URL = `${import.meta.env.BASE_URL}sales.csv`
 
 const PRODUCTS_URL = `${import.meta.env.BASE_URL}products.csv`
+const HOLIDAYS_URL = `${import.meta.env.BASE_URL}thai_holidays.csv`
 
 const parseCsv = (text) =>
   Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: (h) => h.trim() }).data
@@ -61,7 +69,20 @@ async function loadSales() {
     // ไม่มี products.csv ก็ยังใช้งานได้ กราฟจะแสดงรหัสสินค้าแทนชื่อ
   }
 
+  // วันหยุดราชการ (ใช้ใน Lab 4.5) ไม่มีไฟล์ก็ยังใช้งานส่วนอื่นได้
+  let holidays = {}
+  try {
+    const hRes = await fetch(HOLIDAYS_URL)
+    const hText = await hRes.text()
+    if (hRes.ok && !hText.trimStart().startsWith('<')) {
+      holidays = Object.fromEntries(parseCsv(hText).map((h) => [h.date, h.holiday]))
+    }
+  } catch {
+    // ข้ามได้
+  }
+
   return {
+    holidays,
     rows: prepareRows(raw), // สำหรับ Dashboard
     labRows: prepareLabRows(raw), // สำหรับ Lab 2.2 ตามรูปแบบของอาจารย์
     products,
@@ -485,6 +506,8 @@ const PAGES = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'lab2', label: 'Lab 2.2' },
   { id: 'live', label: 'สด · Firestore' },
+  { id: 'customers', label: 'ลูกค้า & เมนู' },
+  { id: 'forecast', label: 'พยากรณ์ & ผิดปกติ' },
   { id: 'rules', label: 'ทดสอบ Rules' },
 ]
 
@@ -552,6 +575,13 @@ export default function App() {
       .catch((err) => setState({ status: 'error', message: err.message }))
   }, [])
 
+  // แหล่งข้อมูลของแท็บ Lab 4: โหมดสาธิตคำนวณจาก CSV ในเบราว์เซอร์ ไม่งั้นอ่านจาก Firestore
+  const source = useMemo(() => {
+    if (state.status !== 'ready') return null
+    if (DEMO) return createDemoSource(state.labRows, state.products, state.holidays)
+    return isConfigured ? firestoreSource : null
+  }, [state])
+
   if (state.status === 'loading') {
     return <CenteredMessage title="กำลังโหลดข้อมูลยอดขาย…" />
   }
@@ -576,7 +606,11 @@ export default function App() {
           {page === 'lab2' && <Lab2Page rows={state.labRows} products={state.products} />}
           {/* ยังไม่ได้ตั้งค่า .env จะแสดงวิธีเชื่อม Firebase แทน */}
           {page === 'live' && (isConfigured ? <LiveTab /> : <SetupGuide />)}
-          {page === 'rules' && (isConfigured ? <RulesTester /> : <SetupGuide />)}
+          {page === 'customers' && (source ? <CustomersTab source={source} /> : <SetupGuide />)}
+          {page === 'forecast' && (source ? <ForecastTab source={source} /> : <SetupGuide />)}
+          {page === 'rules' && (DEMO
+            ? <p className="text-stone-600">การทดสอบ Rules ใช้ได้กับ Firebase จริงเท่านั้น ไม่ใช่โหมดสาธิต</p>
+            : isConfigured ? <RulesTester /> : <SetupGuide />)}
         </main>
       )}
     </>
