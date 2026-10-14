@@ -2,10 +2,11 @@
 // คำนวณในเบราว์เซอร์จาก analytics/daily (ยอดรายวันแยกสาขา ~2,700 แถว) จึงเปลี่ยนสาขาได้ทันทีโดยไม่อ่าน Firestore เพิ่ม
 import { useMemo, useState } from "react";
 import {
-  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine,
+  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine, ReferenceDot,
 } from "recharts";
 import { AnalyticsShell, Card, Pending, Insight, MAIN, GREEN, MUTED, INK, thaiDay } from "./ui.jsx";
 import { useAnalytics } from "./useAnalytics.js";
+import { addDays } from "../lab3/time.js";
 import { toSeries } from "../lib/analytics/daily.js";
 import { seasonalForecast, backtest } from "../lib/analytics/forecast.js";
 import { scoreAnomalies } from "../lib/analytics/anomaly.js";
@@ -86,6 +87,63 @@ function Stat({ label, value, note, muted }) {
   );
 }
 
+// ---------------- Lab 4.5B · คลิกแล้วซูม ----------------
+const ZOOM_DAYS = 28;
+const LOW = "#b91c1c";   // ต่ำกว่าปกติ
+const HIGH = "#d97706";  // สูงกว่าปกติ
+
+/** กราฟยอดจริงเทียบค่าปกติของสาขาที่เลือก ±28 วันรอบวันผิดปกติ */
+function AnomalyZoom({ daily, scored, focus, onClose }) {
+  const data = useMemo(() => {
+    const from = addDays(focus.date, -ZOOM_DAYS);
+    const to = addDays(focus.date, ZOOM_DAYS);
+    // ค่าปกติ (expected) ของแต่ละวันจาก scoreAnomalies สาขาเดียวกัน
+    const expectedOn = new Map(scored.filter((a) => a.branch === focus.branch).map((a) => [a.date, a.expected]));
+    return toSeries(daily, focus.branch)
+      .filter((s) => s.date >= from && s.date <= to)
+      .map((s) => ({ date: s.date, actual: s.revenue, expected: expectedOn.get(s.date) ?? null }));
+  }, [daily, scored, focus]);
+
+  const color = focus.change < 0 ? LOW : HIGH;
+  return (
+    <div className="mb-4 rounded-lg bg-stone-50 p-4 ring-1 ring-stone-200">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="font-medium">{focus.branch} · {thaiDay(focus.date)}</p>
+          <p className="text-sm text-stone-600">
+            ยอดจริง {fmtBaht(focus.actual)} เทียบค่าปกติ {fmtBaht(focus.expected)} ·{" "}
+            <span style={{ color }} className="font-medium">
+              {focus.change < 0 ? "ต่ำกว่า" : "สูงกว่า"}ปกติ {Math.round(Math.abs(focus.change) * 100)}%
+            </span>{" "}
+            · แสดง ±{ZOOM_DAYS} วัน
+          </p>
+        </div>
+        <button type="button" onClick={onClose}
+                className="rounded-lg px-3 py-1.5 text-sm text-stone-600 ring-1 ring-stone-300 hover:bg-stone-100">
+          ปิด
+        </button>
+      </div>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="#e7e5e4" vertical={false} />
+            <XAxis dataKey="date" tickFormatter={shortDay} tick={{ fontSize: 11, fill: INK }} minTickGap={24} />
+            <YAxis tickFormatter={fmtShortBaht} tick={{ fontSize: 11, fill: INK }} width={64} />
+            <Tooltip labelFormatter={thaiDay}
+                     formatter={(v, name) => [v == null ? "-" : fmtBaht(v), name]} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <ReferenceLine x={focus.date} stroke={color} strokeDasharray="2 3" />
+            <Line name="ยอดจริง" dataKey="actual" stroke={MAIN} strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line name="ค่าปกติ" dataKey="expected" stroke={MUTED} strokeWidth={2} strokeDasharray="5 4"
+                  dot={false} connectNulls isAnimationActive={false} />
+            <ReferenceDot x={focus.date} y={focus.actual} r={6} fill={color} stroke="#fff" strokeWidth={2} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 function AnomalyCard({ daily, holidays }) {
   const [focus, setFocus] = useState(null);
   const result = useMemo(() => tryRun(() => scoreAnomalies(daily, holidays)), [daily, holidays]);
@@ -96,7 +154,8 @@ function AnomalyCard({ daily, holidays }) {
   return (
     <Card title="วันที่ยอดขายผิดปกติ 15 อันดับ"
           sub="เทียบกับค่ากลางของวันเดียวกันของสัปดาห์ใน 8 สัปดาห์ก่อน · ไม่นับวันหยุดราชการ">
-      {/* Lab 4.5B: เมื่อคลิกแถว (focus) ให้แสดงกราฟยอดจริงเทียบค่าปกติ ±4 สัปดาห์รอบวันนั้น */}
+      {/* Lab 4.5B: คลิกแถวแล้วซูม · คลิกแถวเดิมซ้ำหรือกดปิด = ซ่อน */}
+      {focus && <AnomalyZoom daily={daily} scored={all} focus={focus} onClose={() => setFocus(null)} />}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[600px] text-sm tabular-nums">
           <thead className="text-left text-stone-500">

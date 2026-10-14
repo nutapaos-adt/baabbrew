@@ -74,6 +74,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---------- ผลวิเคราะห์ (Lab 4.2) ----------
+    // อ่านได้เมื่อล็อกอิน เพราะมีข้อมูลรายลูกค้า (RFM) · เขียนจากหน้าเว็บไม่ได้
+    // pipeline (scripts/build-analytics.mjs, GitHub Actions) ใช้ firebase-admin จึงไม่ติด rules
+    match /analytics/{docId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // ---------- ยอดขาย ----------
     match /sales/{saleId} {
       // อ่านได้เมื่อล็อกอิน (Dashboard สด)
