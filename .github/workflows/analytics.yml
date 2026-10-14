@@ -1,0 +1,35 @@
+# Lab 4.6 · อัปเดตเอกสารสรุป analytics ทุกเช้าอัตโนมัติ
+# ต้องตั้ง secret ชื่อ FIREBASE_SERVICE_ACCOUNT_JSON ก่อน:
+#   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+#   วางเนื้อหาไฟล์ secrets/service-account.json ทั้งไฟล์
+name: Build analytics
+
+on:
+  schedule:
+    - cron: "15 23 * * *"   # 23:15 UTC = 06:15 เวลาไทย (GitHub อาจรันช้ากว่านี้ได้หลายนาที)
+  workflow_dispatch:         # ปุ่ม "Run workflow" สำหรับรันเองทันที
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analytics
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Test analytics functions
+        run: npx vitest run src/lib/analytics
+      - name: Build and write analytics to Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/build-analytics.mjs

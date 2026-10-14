@@ -1,7 +1,7 @@
 {
   "name": "baanbrew-dashboard",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,9 @@
     "test": "vitest run",
     "seed:dry": "node scripts/seed.mjs --dry-run",
     "seed": "node --env-file=.env scripts/seed.mjs",
-    "verify-import": "node --env-file=.env scripts/verify-import.mjs"
+    "verify-import": "node --env-file=.env scripts/verify-import.mjs",
+    "analytics:dry": "node scripts/build-analytics.mjs --dry-run",
+    "analytics": "node --env-file=.env scripts/build-analytics.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
